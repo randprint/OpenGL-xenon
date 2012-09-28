@@ -1,20 +1,5 @@
 #include "gl_xenos.h"
 
-#define BYTE_CLAMP(i) (int) ((((i) > 255) ? 255 : (((i) < 0) ? 0 : (i))))
-
-#define COLOR_ARGB(a,r,g,b) ((unsigned int)((((a)&0xff)<<24)|(((r)&0xff)<<16)|(((g)&0xff)<<8)|((b)&0xff)))
-
-unsigned int Gl_Color_2_Xe (GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
-{
-	return COLOR_ARGB
-	(
-		BYTE_CLAMP (alpha * 255.0f),
-		BYTE_CLAMP (red * 255.0f),
-		BYTE_CLAMP (green * 255.0f),
-		BYTE_CLAMP (blue * 255.0f)
-	);
-}
-
 void glShadeModel (GLenum mode)
 {
 	
