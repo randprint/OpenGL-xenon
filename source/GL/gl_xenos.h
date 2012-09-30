@@ -48,6 +48,7 @@ unsigned int Gl_Color_2_Xe (GLclampf red, GLclampf green, GLclampf blue, GLclamp
 /***********************************************************************
  * Textures
  ***********************************************************************/
+ #define XE_MAX_TMUS 2
 typedef struct glXeSurface_s{
 	// OpenGL texture id
 	int glnum;
@@ -60,6 +61,26 @@ typedef struct glXeSurface_s{
 } glXeSurface_t;
 
 glXeSurface_t * glXeSurfaces;
+
+typedef struct glXeTmu_s{
+	glXeSurface_t * boundtexture;
+	int enabled;
+	
+	unsigned int colorop;
+	unsigned int colorarg1;
+	unsigned int colorarg2;
+	unsigned int alphaop;
+	unsigned int alphaarg1;
+	unsigned int alphaarg2;
+	unsigned int texcoordindex;
+
+	int texenvdirty;
+	int texparamdirty;
+} glXeTmu_t;
+
+glXeTmu_t xeTmus[XE_MAX_TMUS];
+
+int xeCurrentTMU;
 
 /***********************************************************************
  * Matrices

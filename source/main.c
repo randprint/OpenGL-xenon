@@ -3,6 +3,7 @@
 #include <console/console.h>
 #include <xenos/xenos.h>
 #include <xenon_soc/xenon_power.h>
+#include <debug.h>
 
 void gluPerspective( GLdouble fovy, GLdouble aspect, GLdouble zNear, GLdouble zFar )
 {
@@ -68,7 +69,7 @@ void DrawGLScene()
 }
 #endif
 
-#if 1
+#if 0
 // lesson 5
 
 /* rotation angle for the triangle. */
@@ -202,6 +203,113 @@ void DrawGLScene()
 
 #endif
 
+#if 1
+#include "png_utils.h"
+#include "NeHe_png.h"
+/* floats for x rotation, y rotation, z rotation */
+float xrot, yrot, zrot;
+
+/* storage for one texture  */
+GLuint texture[1];
+
+// Load Bitmaps And Convert To Textures
+void LoadGLTextures() {	
+    struct XenosSurface * surf = loadPNGFromMemory(NeHe_png); 
+    
+    // Create Texture	
+    glGenTextures(1, &texture[0]);
+    glBindTexture(GL_TEXTURE_2D, texture[0]);   // 2d texture (x and y size)
+    
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR); // scale linearly when image bigger than texture
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR); // scale linearly when image smalled than texture
+    
+    // 2d texture, level of detail 0 (normal), 3 components (red, green, blue), x size from image, y size from image, 
+    // border 0 (normal), rgb color data, unsigned byte data, and finally the data itself.
+    glTexImage2D(GL_TEXTURE_2D, 0, 4, surf->width, surf->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, surf->base);
+};
+
+/* A general OpenGL initialization function.  Sets all of the initial parameters. */
+void InitGL(int Width, int Height)	        // We call this right after our OpenGL window is created.
+{
+    LoadGLTextures();				// Load The Texture(s) 
+    glEnable(GL_TEXTURE_2D);			// Enable Texture Mapping
+    glClearColor(0.0f, 0.0f, 1.0f, 0.0f);	// Clear The Background Color To Blue 
+    glClearDepth(1.0);				// Enables Clearing Of The Depth Buffer
+    glDepthFunc(GL_LESS);			// The Type Of Depth Test To Do
+    glEnable(GL_DEPTH_TEST);			// Enables Depth Testing
+    glShadeModel(GL_SMOOTH);			// Enables Smooth Color Shading
+    
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();				// Reset The Projection Matrix
+    
+    gluPerspective(45.0f,(GLfloat)Width/(GLfloat)Height,0.1f,100.0f);	// Calculate The Aspect Ratio Of The Window
+    
+    glMatrixMode(GL_MODELVIEW);
+}
+
+/* The main drawing function. */
+void DrawGLScene()
+{
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear The Screen And The Depth Buffer
+    glLoadIdentity();				// Reset The View
+
+    glTranslatef(0.0f,0.0f,-5.0f);              // move 5 units into the screen.
+    
+    glRotatef(xrot,1.0f,0.0f,0.0f);		// Rotate On The X Axis
+    glRotatef(yrot,0.0f,1.0f,0.0f);		// Rotate On The Y Axis
+    glRotatef(zrot,0.0f,0.0f,1.0f);		// Rotate On The Z Axis
+
+    glBindTexture(GL_TEXTURE_2D, texture[0]);   // choose the texture to use.
+    glBegin(GL_QUADS);		                // begin drawing a cube
+    
+    // Front Face (note that the texture's corners have to match the quad's corners)
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);	// Bottom Left Of The Texture and Quad
+    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);	// Bottom Right Of The Texture and Quad
+    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  1.0f);	// Top Right Of The Texture and Quad
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);	// Top Left Of The Texture and Quad
+    
+    // Back Face
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);	// Bottom Right Of The Texture and Quad
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);	// Top Right Of The Texture and Quad
+    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);	// Top Left Of The Texture and Quad
+    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.0f);	// Bottom Left Of The Texture and Quad
+	
+    // Top Face
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);	// Top Left Of The Texture and Quad
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f,  1.0f,  1.0f);	// Bottom Left Of The Texture and Quad
+    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f,  1.0f,  1.0f);	// Bottom Right Of The Texture and Quad
+    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);	// Top Right Of The Texture and Quad
+    
+    // Bottom Face       
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, -1.0f, -1.0f);	// Top Right Of The Texture and Quad
+    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f, -1.0f, -1.0f);	// Top Left Of The Texture and Quad
+    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);	// Bottom Left Of The Texture and Quad
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);	// Bottom Right Of The Texture and Quad
+    
+    // Right face
+    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.0f);	// Bottom Right Of The Texture and Quad
+    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);	// Top Right Of The Texture and Quad
+    glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  1.0f);	// Top Left Of The Texture and Quad
+    glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);	// Bottom Left Of The Texture and Quad
+    
+    // Left Face
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);	// Bottom Left Of The Texture and Quad
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);	// Bottom Right Of The Texture and Quad
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);	// Top Right Of The Texture and Quad
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);	// Top Left Of The Texture and Quad
+    
+    glEnd();                                    // done with the polygon.
+
+    xrot+=0.150f;		                // X Axis Rotation	
+    yrot+=0.150f;		                // Y Axis Rotation
+    zrot+=0.150f;		                // Z Axis Rotation
+
+    // since this is double buffered, swap the buffers to display what just got drawn.
+    XenonGLDisplay();
+}
+
+#endif
 
 int main(int argc, char **argv) 
 {  
@@ -211,7 +319,11 @@ int main(int argc, char **argv)
 	xenon_make_it_faster(XENON_SPEED_FULL);
 	
 	XenonGLInit();
+	
 	InitGL(1280, 720);
+	
+	console_close();
+	
 	while(1) {
 		DrawGLScene();
 	}

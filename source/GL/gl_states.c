@@ -170,6 +170,7 @@ void GlEnableDisable(GLenum cap, int enable)
 		break;
 
 	case GL_TEXTURE_2D:
+		xeTmus[xeCurrentTMU].enabled = enable;
 		return;
 
 	case GL_CULL_FACE:		

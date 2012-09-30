@@ -12,6 +12,9 @@
 #define XE_PRIMTYPE_QUADLIST 13
 */
 
+static short indices_strip[] = {0, 1, 2, 2, 1, 3};
+static short indices_quad[] = {0, 1, 2, 0, 2, 3};
+
 int Gl_Prim_2_Xe_Prim(GLenum mode)
 {
 	// default to this
@@ -32,7 +35,6 @@ int Gl_Prim_2_Xe_Prim(GLenum mode)
 			break;
 		case GL_LINES:
 			ret = XE_PRIMTYPE_LINELIST;
-			break;
 		case GL_QUADS:
 			ret = XE_PRIMTYPE_QUADLIST;
 			break;
@@ -58,10 +60,8 @@ int Gl_Prim_2_Size(GLenum mode, int size) {
 		case GL_POINTS:
 		case GL_LINES:
 			ret = size;
-			break;
-		// quad => 4 point
 		case GL_QUADS:
-			ret = size / 4;
+			ret = size/4;
 			break;
 	}
 	
@@ -79,13 +79,20 @@ void GL_SubmitVertexes()
     Xe_SetStreamSource(xe, 0, pVbGL, xe_PrevNumVerts * sizeof(glVerticesFormat_t), 10);
     Xe_SetShader(xe, SHADER_TYPE_PIXEL, pPixelShader, 0);
     Xe_SetShader(xe, SHADER_TYPE_VERTEX, pVertexShader, 0);
+    
+    // 
+    if (xeTmus[xeCurrentTMU].enabled) {
+		Xe_SetTexture(xe, 0, xeTmus[xeCurrentTMU].boundtexture->teximg);
+	}
+	else {
+		Xe_SetTexture(xe, 0, NULL);
+	}
 	
 	// tmp
 	// Xe_SetFillMode(xe, XE_FILL_WIREFRAME, XE_FILL_WIREFRAME);
 	
 	// draw
 	Xe_DrawPrimitive(xe, Gl_Prim_2_Xe_Prim(xe_PrimitiveMode), 0, Gl_Prim_2_Size(xe_PrimitiveMode, (xe_NumVerts - xe_PrevNumVerts)));
-	//Xe_DrawPrimitive(xe, GL_TRIANGLE_FAN, 0, 2);
 }
 
 void glBegin(GLenum mode)
@@ -160,4 +167,15 @@ void glVertex3fv (const GLfloat *v)
 	glVertex3f (v[0], v[1], v[2]);
 }
 
+void glTexCoord2f (GLfloat s, GLfloat t)
+{
+	xe_TextCoord[0].u = s;
+	xe_TextCoord[0].v = t;
+}
 
+
+void glTexCoord2fv (const GLfloat *v)
+{
+	xe_TextCoord[0].u = v[0];
+	xe_TextCoord[0].v = v[1];
+}

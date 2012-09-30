@@ -6,7 +6,9 @@
 #include "gl_xenos.h"
 
 typedef unsigned int DWORD;
-#include "shaders/opengl.ps.h"
+//#include "shaders/opengl.ps.h"
+#define g_xps_ps_test_main g_xps_ps_main
+#include "shaders/opengl.ps.test.h"
 #include "shaders/opengl.vs.h"
 
 void XenonGLInit(){
