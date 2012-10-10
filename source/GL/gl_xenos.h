@@ -12,7 +12,7 @@
  * Vertices
  ***********************************************************************/
  
-#define XE_MAX_VERTICES	16*1024 // 16Mo
+#define XE_MAX_VERTICES	16*1024*100
  
 typedef struct {	
     float x, y, z, w;
@@ -56,8 +56,6 @@ typedef struct glXeSurface_s{
 	GLenum internalformat;
 	
 	struct XenosSurface * teximg;
-	
-	struct glXeSurface_s * next;
 } glXeSurface_t;
 
 glXeSurface_t * glXeSurfaces;
@@ -66,13 +64,7 @@ typedef struct glXeTmu_s{
 	glXeSurface_t * boundtexture;
 	int enabled;
 	
-	unsigned int colorop;
-	unsigned int colorarg1;
-	unsigned int colorarg2;
-	unsigned int alphaop;
-	unsigned int alphaarg1;
-	unsigned int alphaarg2;
-	unsigned int texcoordindex;
+	int texture_env_mode;
 
 	int texenvdirty;
 	int texparamdirty;
@@ -111,7 +103,11 @@ void XeGlCheckDirtyMatrix(xe_matrix_t *m);
  ***********************************************************************/
 struct XenosDevice _xe, *xe;
 struct XenosShader * pVertexShader;
-struct XenosShader * pPixelShader;
+struct XenosShader * pPixelColorShader;
+struct XenosShader * pPixelModulateShader;
+struct XenosShader * pPixelTextureShader;
+struct XenosShader * pCurrentPs;
+struct XenosShader * pCurrentTexturedPs;
 struct XenosVertexBuffer * pVbGL;
 
 /***********************************************************************
@@ -121,3 +117,4 @@ void xe_gl_error(const char * format, ...);
 void xe_gl_log(const char * format, ...);
 void XenonGLInit();
 void XenonGLDisplay();
+void XeGLInitTextures();

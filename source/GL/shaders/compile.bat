@@ -11,6 +11,7 @@ echo.
 
 echo Compile psx shader
 fxc /Fh opengl.vs.h /Tvs_3_0 opengl.hlsl /Evs_main
-fxc /Fh opengl.ps.h /Tps_3_0 opengl.hlsl /Eps_main
-fxc /Fh opengl.ps.test.h /Tps_3_0 opengl.hlsl /Eps_test_main
+fxc /Fh opengl.ps.color.h /Tps_3_0 opengl.hlsl /Eps_color
+fxc /Fh opengl.ps.modulate.h /Tps_3_0 opengl.hlsl /Eps_modulate
+fxc /Fh opengl.ps.texture.h /Tps_3_0 opengl.hlsl /Eps_texture
 cmd

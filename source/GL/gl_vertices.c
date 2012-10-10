@@ -76,17 +76,25 @@ void GL_SubmitVertexes()
 	
 	// set states
     Xe_SetCullMode(xe, XE_CULL_NONE);
-    Xe_SetStreamSource(xe, 0, pVbGL, xe_PrevNumVerts * sizeof(glVerticesFormat_t), 10);
-    Xe_SetShader(xe, SHADER_TYPE_PIXEL, pPixelShader, 0);
+    Xe_SetStreamSource(xe, 0, pVbGL, xe_PrevNumVerts * sizeof(glVerticesFormat_t), 10);    
     Xe_SetShader(xe, SHADER_TYPE_VERTEX, pVertexShader, 0);
     
-    // 
-    if (xeTmus[xeCurrentTMU].enabled) {
+    // set texture
+    if (xeTmus[xeCurrentTMU].enabled && xeTmus[xeCurrentTMU].boundtexture) {
+		if (xeTmus[xeCurrentTMU].texture_env_mode == GL_REPLACE) {
+			// tex
+			Xe_SetShader(xe, SHADER_TYPE_PIXEL, pPixelTextureShader, 0);
+		} else {
+			// Color * tex
+			Xe_SetShader(xe, SHADER_TYPE_PIXEL, pPixelModulateShader, 0);
+		}
 		Xe_SetTexture(xe, 0, xeTmus[xeCurrentTMU].boundtexture->teximg);
 	}
 	else {
+		Xe_SetShader(xe, SHADER_TYPE_PIXEL, pPixelColorShader, 0);	
 		Xe_SetTexture(xe, 0, NULL);
 	}
+	
 	
 	// tmp
 	// Xe_SetFillMode(xe, XE_FILL_WIREFRAME, XE_FILL_WIREFRAME);
@@ -178,4 +186,37 @@ void glTexCoord2fv (const GLfloat *v)
 {
 	xe_TextCoord[0].u = v[0];
 	xe_TextCoord[0].v = v[1];
+}
+
+void glEnableClientState(GLenum array)
+{
+	
+}
+
+void glPointSize(GLfloat size)
+{
+	
+}
+
+void glDrawBuffer (GLenum mode)
+{
+	
+}
+
+void glFinish (void)
+{
+	
+}
+void glArrayElement(GLint i)
+{
+	
+}
+
+void glColorPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *	pointer)
+{
+		
+}
+
+GLenum glGetError(){
+	return GL_NO_ERROR;
 }

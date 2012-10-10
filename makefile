@@ -1,4 +1,3 @@
-DEVKITXENON=/usr/local/xenon
 #---------------------------------------------------------------------------------
 # Clear the implicit built in rules
 #---------------------------------------------------------------------------------
@@ -13,18 +12,6 @@ endif
 include $(DEVKITXENON)/rules
 
 MACHDEP =  -DXENON -m32 -mno-altivec -fno-pic  -fno-pic -mpowerpc64 -mhard-float -L$(DEVKITXENON)/xenon/lib/32 -u read -u _start -u exc_base  
-
-#---------------------------------------------------------------------------------
-#---------------------------------------------------------------------------------
-#---------------------------------------------------------------------------------
-
-#GUI_SRC		:=  source/gui source/gui/fonts source/gui/images source/gui/lang source/gui/libwiigui source/gui/sounds
-#GUI_INC         :=  source/gui
-
-GUI_INCLUDE	:=  -I$(LIBXENON_INC)/freetype2
-GUI_LIBS	:=  -lfreetype
-# GUI_FLAGS	:=  -DUSE_GUI
-
 #---------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------
 #---------------------------------------------------------------------------------
@@ -35,11 +22,11 @@ GUI_LIBS	:=  -lfreetype
 # SOURCES is a list of directories containing source code
 # INCLUDES is a list of directories containing extra header files
 #---------------------------------------------------------------------------------
-TARGET		:=  $(notdir $(CURDIR))
+TARGET		:=  gl
 BUILD		:=  build
-SOURCES		:=  source/GL source
+SOURCES		:=  xenon/GL 
 DATA		:=
-INCLUDES	:=  source/GL source
+INCLUDES	:=  xenon/GL 
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -55,7 +42,7 @@ LDFLAGS	=	-g $(MACHDEP)  -Wl,-Map,$(notdir $@).map
 # any extra libraries we wish to link with the project
 #---------------------------------------------------------------------------------
 #LIBS	:=	-lzlx  -lpng -lbz2  -lxenon -lm -lz
-LIBS	:=	-lxtaf -lfat -lntfs -lpng -lbz2  -lxenon -lm -lz $(GUI_LIBS)
+LIBS	:=	
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
@@ -90,7 +77,7 @@ sFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.S)))
 BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
 
-PNGFILES        :=      $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.png)))
+PNGFILES    :=      $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.png)))
 TTFFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.ttf)))
 LANGFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.lang)))
 PNGFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.png)))
@@ -119,8 +106,6 @@ export OFILES	:=	$(addsuffix .o,$(BINFILES)) \
 #---------------------------------------------------------------------------------
 export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 					$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
-					-I/usr/local/xenon/lib/gcc/powerpc-elf/4.7.1/include \
-					$(GUI_INCLUDE) \
 					-I$(CURDIR)/$(BUILD) \
 					-I$(LIBXENON_INC)
 
@@ -136,12 +121,12 @@ export OUTPUT	:=	$(CURDIR)/$(TARGET)
 #---------------------------------------------------------------------------------
 $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
-	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile 
+	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/makefile
 
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(OUTPUT).elf $(OUTPUT).elf32
+	@rm -fr $(BUILD) $(OUTPUT).a
 
 #---------------------------------------------------------------------------------
 else
@@ -151,8 +136,7 @@ DEPENDS	:=	$(OFILES:.o=.d)
 #---------------------------------------------------------------------------------
 # main targets
 #---------------------------------------------------------------------------------
-$(OUTPUT).elf32: $(OUTPUT).elf
-$(OUTPUT).elf: $(OFILES)
+$(OUTPUT).a: $(OFILES)
 
 -include $(DEPENDS)
 %.vsu.o : %.vsu
@@ -190,8 +174,4 @@ $(OUTPUT).elf: $(OFILES)
 endif
 #---------------------------------------------------------------------------------
 
-
-run: $(BUILD) $(OUTPUT).elf32
-	cp $(OUTPUT).elf32 /srv/tftp/tftpboot/xenon
-	$(PREFIX)strip /srv/tftp/tftpboot/xenon
 

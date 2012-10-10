@@ -1,4 +1,4 @@
-miniature-octo-tyrion
+mini OpenGL lib
 =====================
 
-mini OpenGL for libxenon
+mini OpenGL for libxenon by Ced2911

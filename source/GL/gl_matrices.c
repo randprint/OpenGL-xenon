@@ -150,6 +150,18 @@ void glTranslatef (GLfloat x, GLfloat y, GLfloat z)
 	current_matrix->dirty = 1;
 }
 
+void glGetFloatv (GLenum pname, GLfloat *params)
+{
+	switch (pname)
+	{
+	case GL_MODELVIEW_MATRIX:
+		memcpy (params, &current_matrix->stack[current_matrix->stackdepth].f, sizeof (float) * 16);
+		break;
+
+	default:
+		break;
+	}
+}
 
 void glMultMatrixf (const GLfloat *m)
 {

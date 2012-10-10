@@ -1,6 +1,7 @@
 /** Transformation **/
 float4x4 modelview_matrix : register (c0);
 float4x4 projection_matrix : register (c8);
+float4x4 viewport_matrix : register (c16);
 
 struct VertexShaderInput
 {
@@ -31,6 +32,12 @@ VertexShaderOutput vs_main(VertexShaderInput input)
 	output.uv0 = input.uv0;
 	output.uv1 = input.uv1;
 	output.color = input.color;
+	
+	// reverse Z
+	/*
+	output.Position.z= 1 - output.Position.z;
+	output.Position.w = 1;
+	*/
     return output;
 }
 
@@ -44,11 +51,14 @@ struct PixelShaderInput
 	float4 color: COLOR;			// color
 };
 
-float4 ps_main(PixelShaderInput input): COLOR {
+float4 ps_color(PixelShaderInput input): COLOR {
     return input.color;
-	//return float4(1,0,0,1);
 }
 
-float4 ps_test_main(PixelShaderInput input): COLOR {
+float4 ps_modulate(PixelShaderInput input): COLOR {
+    return input.color * tex2D(texture0, input.uv0);
+}
+
+float4 ps_texture(PixelShaderInput input): COLOR {
     return tex2D(texture0, input.uv0);
 }
