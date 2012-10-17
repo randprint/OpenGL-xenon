@@ -1,177 +1,55 @@
-#---------------------------------------------------------------------------------
-# Clear the implicit built in rules
-#---------------------------------------------------------------------------------
-.SUFFIXES:
-#---------------------------------------------------------------------------------
 ifeq ($(strip $(DEVKITXENON)),)
 $(error "Please set DEVKITXENON in your environment. export DEVKITXENON=<path to>devkitPPC")
 endif
 
 
-
 include $(DEVKITXENON)/rules
+ 
+export TOPDIR	:=	$(CURDIR)
+ 
+export LIBGL_MAJOR	:= 1
+export LIBGL_MINOR	:= 0
+export LIBGL_PATCH	:= 11
 
-MACHDEP =  -DXENON -m32 -mno-altivec -fno-pic  -fno-pic -mpowerpc64 -mhard-float -L$(DEVKITXENON)/xenon/lib/32 -u read -u _start -u exc_base  
-#---------------------------------------------------------------------------------
-#---------------------------------------------------------------------------------
-#---------------------------------------------------------------------------------
-
-#---------------------------------------------------------------------------------
-# TARGET is the name of the output
-# BUILD is the directory where object files & intermediate files will be placed
-# SOURCES is a list of directories containing source code
-# INCLUDES is a list of directories containing extra header files
-#---------------------------------------------------------------------------------
-TARGET		:=  gl
-BUILD		:=  build
-SOURCES		:=  xenon/GL 
-DATA		:=
-INCLUDES	:=  xenon/GL 
-
-#---------------------------------------------------------------------------------
-# options for code generation
-#---------------------------------------------------------------------------------
-ASFLAGS	= -Wa,$(INCLUDE) -Wa,-a32 
-CFLAGS	=  -g -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1 -Wall $(MACHDEP) $(INCLUDE) -DLIBXENON -D__BIG_ENDIAN__ -D__ppc__ -D__powerpc__ -D__POWERPC__ -DELF -D__BIGENDIAN__ -D__PPC__ -D__BIGENDIAN__ $(GUI_FLAGS) 
-
-CXXFLAGS	=	$(CFLAGS) -fpermissive
-
-LDFLAGS	=	-g $(MACHDEP)  -Wl,-Map,$(notdir $@).map
-
-#---------------------------------------------------------------------------------
-# any extra libraries we wish to link with the project
-#---------------------------------------------------------------------------------
-#LIBS	:=	-lzlx  -lpng -lbz2  -lxenon -lm -lz
-LIBS	:=	
-#---------------------------------------------------------------------------------
-# list of directories containing libraries, this must be the top level containing
-# include and lib
-#---------------------------------------------------------------------------------
-LIBDIRS	:= libs
-
-#---------------------------------------------------------------------------------
-# no real need to edit anything past this point unless you need to add additional
-# rules for different file extensions
-#---------------------------------------------------------------------------------
-ifneq ($(BUILD),$(notdir $(CURDIR)))
-#---------------------------------------------------------------------------------
-
-export OUTPUT	:=	$(CURDIR)/$(TARGET)
-
-export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
-					$(foreach dir,$(DATA),$(CURDIR)/$(dir))
-
-export DEPSDIR	:=	$(CURDIR)/$(BUILD)
-
-#---------------------------------------------------------------------------------
-# automatically build a list of object files for our project
-#---------------------------------------------------------------------------------
-PSUFILES        :=      $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.psu)))
-VSUFILES        :=      $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.vsu)))
-BINFILES        :=      $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.bin)))
-PNGFILES        :=      $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.png)))
-ABCFILES        :=      $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.abc)))
-CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
-CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
-sFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
-SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.S)))
-BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
-
-PNGFILES    :=      $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.png)))
-TTFFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.ttf)))
-LANGFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.lang)))
-PNGFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.png)))
-OGGFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.ogg)))
-PCMFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.pcm)))
-
-#---------------------------------------------------------------------------------
-# use CXX for linking C++ projects, CC for standard C
-#---------------------------------------------------------------------------------
-ifeq ($(strip $(CPPFILES)),)
-	export LD	:=	$(CC)
-else
-	export LD	:=	$(CXX)
-endif
-
-export OFILES	:=	$(addsuffix .o,$(BINFILES)) \
-					$(sFILES:.s=.o) $(SFILES:.S=.o) \
-					$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) \
-					$(TTFFILES:.ttf=.ttf.o) $(LANGFILES:.lang=.lang.o) \
-					$(PNGFILES:.png=.png.o) \
-					$(OGGFILES:.ogg=.ogg.o) $(PCMFILES:.pcm=.pcm.o)
+export VERSTRING	:=	$(LIBGL_MAJOR).$(LIBGL_MINOR).$(LIBGL_PATCH)
 
 
-#---------------------------------------------------------------------------------
-# build a list of include paths
-#---------------------------------------------------------------------------------
-export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
-					$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
-					-I$(CURDIR)/$(BUILD) \
-					-I$(LIBXENON_INC)
+#default: release
+default: all
 
-#---------------------------------------------------------------------------------
-# build a list of library paths
-#---------------------------------------------------------------------------------
-export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib) \
-					-L$(LIBXENON_LIB)
+#all: release dist
+all: xenon-release
+	
+release: include/LIBGLversion.h
 
-export OUTPUT	:=	$(CURDIR)/$(TARGET)
-.PHONY: $(BUILD) clean
+xenon-release:
+	$(MAKE) -C source PLATFORM=xenon BUILD=xenon_release
 
-#---------------------------------------------------------------------------------
-$(BUILD):
+#debug: nds-debug gba-debug cube-debug wii-debug
+debug: 
+
+#clean: nds-clean gba-clean ogc-clean
+clean: 
+	$(MAKE) -C source clean
+	
+dist: include/LIBGLversion.h dist-bin dist-src
+
+distribute/$(VERSTRING):
 	@[ -d $@ ] || mkdir -p $@
-	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/makefile
 
-#---------------------------------------------------------------------------------
-clean:
-	@echo clean ...
-	@rm -fr $(BUILD) $(OUTPUT).a
+include/LIBGLversion.h : Makefile
+	@echo "#ifndef __LIBGLVERSION_H__" > $@
+	@echo "#define __LIBGLVERSION_H__" >> $@
+	@echo >> $@
+	@echo "#define _LIBGL_MAJOR_	$(LIBGL_MAJOR)" >> $@
+	@echo "#define _LIBGL_MINOR_	$(LIBGL_MINOR)" >> $@
+	@echo "#define _LIBGL_PATCH_	$(LIBGL_PATCH)" >> $@
+	@echo >> $@
+	@echo '#define _LIBGL_STRING "LIBGL Release '$(LIBGL_MAJOR).$(LIBGL_MINOR).$(LIBGL_PATCH)'"' >> $@
+	@echo >> $@
+	@echo "#endif // __LIBGLVERSION_H__" >> $@
 
-#---------------------------------------------------------------------------------
-else
-
-DEPENDS	:=	$(OFILES:.o=.d)
-
-#---------------------------------------------------------------------------------
-# main targets
-#---------------------------------------------------------------------------------
-$(OUTPUT).a: $(OFILES)
-
--include $(DEPENDS)
-%.vsu.o : %.vsu
-	@echo $(notdir $<)
-	@$(bin2o)
-%.psu.o : %.psu
-	@echo $(notdir $<)
-	@$(bin2o)
-%.bin.o : %.bin
-	@echo $(notdir $<)
-	@$(bin2o)
-%.png.o : %.png
-	@echo $(notdir $<)
-	@$(bin2o)
-%.abc.o : %.abc
-	@echo $(notdir $<)
-	@$(bin2o)
-%.ttf.o : %.ttf
-	@echo $(notdir $<)
-	$(bin2o)
-%.lang.o : %.lang
-	@echo $(notdir $<)
-	$(bin2o)
-%.png.o : %.png
-	@echo $(notdir $<)
-	$(bin2o)
-%.ogg.o : %.ogg
-	@echo $(notdir $<)
-	$(bin2o)
-%.pcm.o : %.pcm
-	@echo $(notdir $<)
-	$(bin2o)
-
-#---------------------------------------------------------------------------------
-endif
-#---------------------------------------------------------------------------------
-
+#install: nds-install gba-install ogc-install
+install: 
+	$(MAKE) -C source install
 
