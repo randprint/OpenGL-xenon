@@ -24,15 +24,15 @@ LIBDIR		:=	lib
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
-CFLAGS	= -g -Os -Wall $(MACHDEP) $(INCLUDE) -DLIBXENON
+CFLAGS	= -g -O3 -DXENON -ffast-math -fomit-frame-pointer -funroll-loops -ffunction-sections -fdata-sections -fno-tree-vectorize -fno-tree-slp-vectorize -ftree-vectorizer-verbose=1 -flto -fuse-linker-plugin -maltivec -mabi=altivec -fno-pic -mpowerpc64 -mhard-float -Wall -mcpu=cell -mtune=cell -m32 -fno-pic -mpowerpc64 -u read -u _start -u exc_base $(MACHDEP) $(INCLUDE) -DLIBXENON
 CXXFLAGS	=	$(CFLAGS)
 
 ASFLAGS	:=	-g
 
 ifneq ($(BUILD),debug)
-export CUBEBIN	:=	$(LIBDIR)/$(PLATFORM)/libgl.a
+export LIBGL	:=	$(LIBDIR)/$(PLATFORM)/libgl.a
 else
-export CUBEBIN	:=	$(LIBDIR)/$(PLATFORM)/libgl.a
+export LIBGL	:=	$(LIBDIR)/$(PLATFORM)/libgl.a
 CFLAGS	+=	-DGLOB_DEBUG
 endif
 
@@ -92,7 +92,7 @@ clean:
 	@echo clean ...
 	@rm -fr xenon_release $(LIBDIR)
 
-all: $(CUBEBIN)
+all: $(LIBGL)
 
 
 install:
@@ -101,7 +101,7 @@ install:
 	cp -f ../include/*.h $(DEVKITXENON)/usr/include/gl
 	cp -f ../include/shaders/*.h $(DEVKITXENON)/usr/include/gl/shaders
 	cp -f ../include/shaders/*.hlsl $(DEVKITXENON)/usr/include/gl/shaders
-	cp -f lib/xenon/libgl.a $(DEVKITXENON)/usr/lib/libgl.a	
+	cp -f ./xenon_release/lib/xenon/libgl.a $(DEVKITXENON)/usr/lib/libgl.a	
 	
 #---------------------------------------------------------------------------------
 else
@@ -111,9 +111,9 @@ DEPENDS	:=	$(OFILES:.o=.d)
 #---------------------------------------------------------------------------------
 # main targets
 #---------------------------------------------------------------------------------
-$(CUBEBIN)	:	$(OFILES) $(LIBDIR)/$(PLATFORM)
-	@rm -f "$(CUBEBIN)"
-	@$(AR) rcs "$(CUBEBIN)" $(OFILES)
+$(LIBGL)	:	$(OFILES) $(LIBDIR)/$(PLATFORM)
+	@rm -f "$(LIBGL)"
+	@$(AR) rcs "$(LIBGL)" $(OFILES)
 	@echo built ... $(notdir $@)
 
 $(LIBDIR)/$(PLATFORM):

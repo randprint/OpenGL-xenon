@@ -12,10 +12,10 @@
 #define XE_PRIMTYPE_QUADLIST 13
 */
 
-static short indices_strip[] = {0, 1, 2, 2, 1, 3};
-static short indices_quad[] = {0, 1, 2, 0, 2, 3};
+extern GLenum gl_cull_mode;
+static int use_indice_buffer = 0;
 
-int Gl_Prim_2_Xe_Prim(GLenum mode)
+static int Gl_Prim_2_Xe_Prim(GLenum mode)
 {
 	// default to this
 	int ret = XE_PRIMTYPE_TRIANGLELIST;
@@ -35,15 +35,30 @@ int Gl_Prim_2_Xe_Prim(GLenum mode)
 			break;
 		case GL_LINES:
 			ret = XE_PRIMTYPE_LINELIST;
+			break;
+		case GL_QUAD_STRIP:
 		case GL_QUADS:
 			ret = XE_PRIMTYPE_QUADLIST;
 			break;
+		//default:
+//GL_POINTS 0x0000
+//GL_LINES 0x0001
+//GL_LINE_LOOP 0x0002
+//GL_LINE_STRIP 0x0003
+//GL_TRIANGLES 0x0004
+//GL_TRIANGLE_STRIP 0x0005
+//GL_TRIANGLE_FAN 0x0006
+//GL_QUADS 0x0007
+//GL_QUAD_STRIP 0x0008
+//GL_POLYGON 0x0009
+			//xe_gl_error("Unknow prim : %x\n", xe_PrimitiveMode);
+			//break;
 	}
 	
 	return ret;
 }
 
-int Gl_Prim_2_Size(GLenum mode, int size) {
+static int Gl_Prim_2_Size(GLenum mode, int size) {
 	// default to this
 	int ret = size;
 	switch (xe_PrimitiveMode) {
@@ -60,6 +75,8 @@ int Gl_Prim_2_Size(GLenum mode, int size) {
 		case GL_POINTS:
 		case GL_LINES:
 			ret = size;
+			break;
+		case GL_QUAD_STRIP:
 		case GL_QUADS:
 			ret = size/4;
 			break;
@@ -68,73 +85,183 @@ int Gl_Prim_2_Size(GLenum mode, int size) {
 	return ret;
 }
 
-void GL_SubmitVertexes()
-{
+enum {
+	XE_ENV_MODE_DISABLED = 0,
+	XE_ENV_MODE_REPLACE,
+	XE_ENV_MODE_MODULATE,
+	XE_ENV_MODE_ADD,		// not implemented
+	XE_ENV_MODE_DECAL,		// not implemented
+	XE_ENV_MODE_BLEND,		// not implemented
+	XE_ENV_MAX
+};
+
+typedef union {
+	struct {
+		unsigned int tmu_env_mode:4;	//	4
+	} states[XE_MAX_TMUS];				// 	2 * 4 > 8
+	
+	unsigned int hash;
+} pixel_shader_pipeline_t;
+
+typedef struct pixel_shader_cache_s {
+	unsigned int hash;
+	void * code;
+} pixel_shader_cache_t;
+
+static pixel_shader_cache_t cache[XE_ENV_MAX * XE_MAX_TMUS];
+
+
+void GL_InitShaderCache() {
+	pixel_shader_pipeline_t tmp;
+	memset(&cache, 0, (XE_ENV_MAX * XE_MAX_TMUS) * sizeof(pixel_shader_cache_t));
+	
+	// some know shaders
+	
+	// SIMPLE COLOR
+	tmp.hash = 0;
+	cache[0].hash = tmp.hash;
+	cache[0].code = (void*)pPixelColorShader;
+	
+	// MODULATE COLOR * TEX 1
+	tmp.hash = 0;
+	tmp.states[0].tmu_env_mode = XE_ENV_MODE_MODULATE;
+	cache[1].hash = tmp.hash;
+	cache[1].code = (void*)pPixelModulateShader;
+		
+	// REPLACE TEX 1
+	tmp.hash = 0;
+	tmp.states[0].tmu_env_mode = XE_ENV_MODE_REPLACE;
+	cache[2].hash = tmp.hash;
+	cache[2].code = (void*)pPixelTextureShader;
+	
+	// MODULATE COLOR * TEX 1 * TEX 2
+	tmp.hash = 0;
+	tmp.states[0].tmu_env_mode = XE_ENV_MODE_MODULATE;
+	tmp.states[1].tmu_env_mode = XE_ENV_MODE_MODULATE;	
+	cache[3].hash = tmp.hash;
+	cache[3].code = (void*)pPixelModulateShader2;
+}
+
+// GL_TEXTURE_ENV_MODE defaults to GL_MODULATE
+void GL_SelectShaders() {
+	int i = 0;
+	pixel_shader_pipeline_t shader;
+	shader.hash = 0;
+	
+	for (i=0; i<XE_MAX_TMUS; i++) {    
+		// set texture
+		if (xeTmus[i].enabled && xeTmus[i].boundtexture) {
+			switch(xeTmus[i].texture_env_mode) {
+				case GL_REPLACE:
+					shader.states[i].tmu_env_mode = XE_ENV_MODE_REPLACE;
+					break;
+				default:
+				case GL_MODULATE:
+					shader.states[i].tmu_env_mode = XE_ENV_MODE_MODULATE;
+					break;
+			}
+		}
+		// no more texture used
+		else {
+			break;
+		}
+	}
+	// color only !!!
+	if (shader.hash == 0) {
+		Xe_SetShader(xe, SHADER_TYPE_PIXEL, pPixelColorShader, 0);
+		return;
+	}
+	
+	// look into cache
+	for (i=0; i<XE_ENV_MAX * XE_MAX_TMUS; i++) {
+		if (cache[i].hash) {
+			if (cache[i].hash == shader.hash) {
+				Xe_SetShader(xe, SHADER_TYPE_PIXEL, cache[i].code, 0);
+				return;
+			}
+		}
+	}
+	
+	// create it and add it to cache
+	/* todo */
+	printf("Unknow hash : %d\n", shader.hash);
+}
+
+
+void GL_SelectTextures() {
+	 int i = 0;
+    // setup texture    
+    for(i=0; i<XE_MAX_TMUS; i++) {    
+		// set texture
+		if (xeTmus[i].enabled && xeTmus[i].boundtexture) {
+			Xe_SetTexture(xe, i, xeTmus[i].boundtexture->teximg);
+		}
+		else {
+			Xe_SetTexture(xe, i, NULL);
+		}
+	}
+}
+
+static void GL_SubmitVertexes()
+{	
+	// never draw this one
+	if (gl_cull_mode == GL_FRONT_AND_BACK)
+		return;
+	//Xe_SetFillMode(xe, XE_FILL_WIREFRAME, XE_FILL_WIREFRAME);
+		
+	// update states if dirty
+	XeUpdateStates();
+
 	// update if dirty
 	XeGlCheckDirtyMatrix(&projection_matrix);
 	XeGlCheckDirtyMatrix(&modelview_matrix);
 	
-	// set states
-    Xe_SetCullMode(xe, XE_CULL_NONE);
-    Xe_SetStreamSource(xe, 0, pVbGL, xe_PrevNumVerts * sizeof(glVerticesFormat_t), 10);    
+    // Xe_SetStreamSource(xe, 0, pVbGL, xe_PrevNumVerts * sizeof(glVerticesFormat_t), 10);
     Xe_SetShader(xe, SHADER_TYPE_VERTEX, pVertexShader, 0);
     
-    // set texture
-    if (xeTmus[xeCurrentTMU].enabled && xeTmus[xeCurrentTMU].boundtexture) {
-		if (xeTmus[xeCurrentTMU].texture_env_mode == GL_REPLACE) {
-			// tex
-			Xe_SetShader(xe, SHADER_TYPE_PIXEL, pPixelTextureShader, 0);
-		} else {
-			// Color * tex
-			Xe_SetShader(xe, SHADER_TYPE_PIXEL, pPixelModulateShader, 0);
-		}
-		Xe_SetTexture(xe, 0, xeTmus[xeCurrentTMU].boundtexture->teximg);
-	}
-	else {
-		Xe_SetShader(xe, SHADER_TYPE_PIXEL, pPixelColorShader, 0);	
-		Xe_SetTexture(xe, 0, NULL);
-	}
-	
-	
-	// tmp
-	// Xe_SetFillMode(xe, XE_FILL_WIREFRAME, XE_FILL_WIREFRAME);
+   
+	// setup shaders and textures
+	GL_SelectShaders();
+	GL_SelectTextures();
 	
 	// draw
-	Xe_DrawPrimitive(xe, Gl_Prim_2_Xe_Prim(xe_PrimitiveMode), 0, Gl_Prim_2_Size(xe_PrimitiveMode, (xe_NumVerts - xe_PrevNumVerts)));
+	if (use_indice_buffer == 0)
+	{	
+		/*  Xe_DrawPrimitive(struct XenosDevice *xe, int type, int start, int primitive_count) */
+		Xe_DrawPrimitive(xe, Gl_Prim_2_Xe_Prim(xe_PrimitiveMode), xe_PrevNumVerts, Gl_Prim_2_Size(xe_PrimitiveMode, (xe_NumVerts - xe_PrevNumVerts)));
+	}
+	else {
+		/* Xe_DrawIndexedPrimitive(struct XenosDevice *xe, int type, int base_index, int min_index, int num_vertices, int start_index, int primitive_count) */
+		Xe_SetIndices(xe, pIbGL);
+		
+		Xe_DrawIndexedPrimitive(xe, Gl_Prim_2_Xe_Prim(xe_PrimitiveMode), 
+		0, 0,
+		(xe_NumVerts - xe_PrevNumVerts), xe_PrevNumIndices, (xe_NumIndices - xe_PrevNumIndices));
+		
+		/*
+		Xe_DrawIndexedPrimitive(xe,XE_PRIMTYPE_TRIANGLELIST, 
+		0, 0,
+		(xe_NumVerts - xe_PrevNumVerts), xe_PrevNumIndices, 2);
+		*/ 
+	}
+	
+	//printBlendValue();
 }
 
 void glBegin(GLenum mode)
 {
 	xe_PrimitiveMode = mode;
-
+	
 	xe_PrevNumVerts = xe_NumVerts;
+	xe_PrevNumIndices = xe_NumIndices;
 }
 
 void glEnd()
 {
-	switch (xe_PrimitiveMode) {
-		case GL_TRIANGLE_FAN:
-		case GL_TRIANGLES:
-		{
-			
-			break;
-		}
-		case GL_TRIANGLE_STRIP:
-		{
-			
-			break;
-		}
-		case GL_POINTS:
-		case GL_LINES:
-		case GL_POLYGON:
-		case GL_QUADS:
-		{
-			break;
-		}
-	}
-
 	// submit vertices
 	GL_SubmitVertexes();
+	use_indice_buffer = 0;
+	xe_CurrentColor.u32 = 0;
 };
 
 
@@ -142,6 +269,7 @@ void glVertex3f (GLfloat x, GLfloat y, GLfloat z)
 {
 	// add a new vertex to the list with the specified xyz and inheriting the current normal, color and texcoords
 	// (per spec at http://www.opengl.org/sdk/docs/man/xhtml/glVertex.xml)
+#if 0	
 	xe_Vertices[xe_NumVerts].x = x;
 	xe_Vertices[xe_NumVerts].y = y;
 	xe_Vertices[xe_NumVerts].z = z;
@@ -152,8 +280,34 @@ void glVertex3f (GLfloat x, GLfloat y, GLfloat z)
 	xe_Vertices[xe_NumVerts].u0 = xe_TextCoord[0].u;
 	xe_Vertices[xe_NumVerts].v0 = xe_TextCoord[0].v;
 	xe_Vertices[xe_NumVerts].u1 = xe_TextCoord[1].u;
-	xe_Vertices[xe_NumVerts].v1 = xe_TextCoord[1].v;
+	xe_Vertices[xe_NumVerts].v1 = xe_TextCoord[1].v;	
+#else 
+	union {
+		float f;
+		unsigned int u32;
+	} c;
+	
+	c.u32 = xe_CurrentColor.u32;
+	
+	*xe_Vertices++ = x;
+	*xe_Vertices++ = y;
+	*xe_Vertices++ = z;
+	*xe_Vertices++ = 1;
 
+	/* 
+*xe_Vertices++ = xe_TextCoord[0].u;
+*xe_Vertices++ = xe_TextCoord[0].v;
+*xe_Vertices++ = xe_TextCoord[1].u;
+*xe_Vertices++ = xe_TextCoord[1].v;
+	*/
+
+	int i = 0;
+	for(i = 0; i < XE_MAX_TMUS; i++) {
+		*xe_Vertices++ = xe_TextCoord[i].u;
+		*xe_Vertices++ = xe_TextCoord[i].v;
+	}
+	*xe_Vertices++ = c.f;
+#endif	
 	// next vertex
 	xe_NumVerts++;
 }
@@ -188,35 +342,300 @@ void glTexCoord2fv (const GLfloat *v)
 	xe_TextCoord[0].v = v[1];
 }
 
-void glEnableClientState(GLenum array)
+
+void glFinish (void)
 {
 	
+}
+
+GLenum glGetError(){
+	return GL_NO_ERROR;
 }
 
 void glPointSize(GLfloat size)
 {
 	
 }
+void glPointParameterf(	GLenum pname, GLfloat param)
+{
+	
+}
+
+void glPointParameterfv(GLenum pname,const GLfloat *  params)
+{
+	
+}
+
+/***********************************************************************
+ * 
+ * Batch Rendering
+ * 
+ **********************************************************************/ 
+ 
+typedef struct gl_varray_pointer_s
+{
+	GLint size;
+	GLenum type;
+	GLsizei stride;
+	GLvoid *pointer;
+} gl_varray_pointer_t;
+
+typedef struct gl_indices_pointer_s
+{
+	GLenum mode;
+	GLenum type;
+	GLvoid *pointer;
+} gl_indices_pointer_t;
+
+typedef struct gl_vertices_pointer_s
+{
+	GLint count;
+	GLint size;
+	GLenum type;
+	GLsizei stride;
+	GLvoid *pointer;
+} gl_vertices_pointer_t;
+
+
+static gl_indices_pointer_t indexPointer;
+static gl_vertices_pointer_t vertexPointer;
+static gl_varray_pointer_t colorPointer;
+static gl_varray_pointer_t texCoordPointer[XE_MAX_TMUS];
+static int vArray_TMU = 0;
+
+/** todo **/
+void glClientActiveTexture(GLenum texture)
+{
+	vArray_TMU = 0;
+}
 
 void glDrawBuffer (GLenum mode)
 {
-	
+	// TR
 }
-
-void glFinish (void)
-{
-	
-}
+ 
 void glArrayElement(GLint i)
 {
-	
+	use_indice_buffer = 1;	
+	//*xe_indices++ = i + xe_PrevNumVerts;
+	*xe_indices++ = i + xe_NumVerts;
+	xe_NumIndices++;
 }
+
 
 void glColorPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *	pointer)
 {
-		
+	if ((type == GL_FLOAT) || (type == GL_UNSIGNED_BYTE)) {	
+		// Packed
+		if (stride == 0) {
+			if ( type == GL_FLOAT )	{
+				stride = sizeof(float) * size;
+			} else if(type == GL_UNSIGNED_BYTE)	{
+				stride = sizeof(char) * size;
+			}
+		}
+		colorPointer.size = size;
+		colorPointer.type = type;
+		colorPointer.stride = stride;
+		colorPointer.pointer = (GLvoid *) pointer;
+	} else {
+		xe_gl_error("Unimplemented color pointer type");
+	}
 }
 
-GLenum glGetError(){
-	return GL_NO_ERROR;
+void glTexCoordPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *pointer)
+{
+	if (type != GL_FLOAT) 
+		xe_gl_error("Unimplemented texcoord pointer type\n");
+
+	// Packed
+	if (stride == 0) {
+		stride = sizeof(float) * size;
+	}
+
+	texCoordPointer[vArray_TMU].size = size;
+	texCoordPointer[vArray_TMU].type = type;
+	texCoordPointer[vArray_TMU].stride = stride;
+	texCoordPointer[vArray_TMU].pointer = (GLvoid *) pointer;
+}
+
+void glVertexPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *pointer)
+{
+	if (type != GL_FLOAT) 
+		xe_gl_error("Unimplemented vertex pointer type");
+
+	vertexPointer.size = size;
+	vertexPointer.type = type;
+	vertexPointer.stride = stride;
+	vertexPointer.pointer = (GLvoid *) pointer;
+}
+
+void glLockArraysEXT(int first, int count) {
+	vertexPointer.count = count;
+}
+
+void glUnlockArraysEXT(void) {
+	// nothing
+}
+
+#define COLOR_ARGB(a,r,g,b) ((unsigned int)((((a)&0xff)<<24)|(((r)&0xff)<<16)|(((g)&0xff)<<8)|((b)&0xff)))
+
+/**
+ * mode / type
+ **/ 
+void glDrawElements(GLenum mode, GLsizei numIndexes, GLenum type, const GLvoid * indices)
+{
+	int i = 0;
+	
+	union {
+		float f;
+		unsigned int u32;
+	} color;
+	
+	// Begin
+	xe_PrevNumVerts = xe_NumVerts;
+	xe_PrevNumIndices = xe_NumIndices;
+	
+	unsigned int * indexes = (unsigned int*)indices;
+	void * vertice_ptr = vertexPointer.pointer;
+	void * color_ptr = colorPointer.pointer;
+	void * texcoords_ptr = texCoordPointer[vArray_TMU].pointer;
+	
+	// vertices
+	for (i = 0 ; i < vertexPointer.count ; i++) {
+		float * v = (float*) vertice_ptr;
+		float * t = (float*) texcoords_ptr;
+		unsigned char * c = (unsigned char*) color_ptr;
+		color.u32 = COLOR_ARGB(c[3], c[2], c[1], c[0]);
+		//color.u32 = 0xFFFFFFFF;
+		
+		*xe_Vertices++ = v[0];
+		*xe_Vertices++ = v[1];
+		*xe_Vertices++ = v[2];
+		*xe_Vertices++ = 1;
+		
+		*xe_Vertices++ = t[0];
+		*xe_Vertices++ = t[1];
+		
+		*xe_Vertices++ = t[0];
+		*xe_Vertices++ = t[1];
+		
+		*xe_Vertices++ = color.f;		
+		
+		vertice_ptr += vertexPointer.stride;
+		texcoords_ptr += 2 * sizeof(float);
+		color_ptr += 4 * sizeof(char);
+				
+		xe_NumVerts++;
+	}
+	
+	// indices
+	for (i = 0 ; i < numIndexes ; i++) {
+		*xe_indices++ = indexes[i] + xe_PrevNumVerts;
+		xe_NumIndices++;
+	}
+	
+	
+	XeUpdateStates();
+	XeGlCheckDirtyMatrix(&projection_matrix);
+	XeGlCheckDirtyMatrix(&modelview_matrix);
+	
+	// setup shaders and textures
+	Xe_SetShader(xe, SHADER_TYPE_VERTEX, pVertexShader, 0);
+	GL_SelectShaders();
+	GL_SelectTextures();
+	
+	Xe_SetIndices(xe, pIbGL);
+	Xe_SetStreamSource(xe, 0, pVbGL, 0, 10);
+		
+	Xe_DrawIndexedPrimitive(
+		xe, 
+		XE_PRIMTYPE_TRIANGLELIST, 
+		0, 0,
+		vertexPointer.count, 
+		xe_PrevNumIndices, 
+		numIndexes/3
+	);
+}
+
+void glDrawArrays (GLenum mode, GLint first, GLsizei count)
+{
+	TR
+	int i;
+	int v;
+	int tmu;
+	unsigned char *vp;
+	unsigned char *cp;
+	unsigned char *stp[XE_MAX_TMUS];
+
+	// required by the spec
+	if (!vertexPointer.pointer) return;
+
+	vp = ((unsigned char *) vertexPointer.pointer + first);
+	cp = ((unsigned char *) colorPointer.pointer + first);
+
+	for (tmu = 0; tmu < XE_MAX_TMUS; tmu++)
+	{
+		if (texCoordPointer[tmu].pointer)
+			stp[tmu] = ((unsigned char *) texCoordPointer[tmu].pointer + first);
+		else stp[tmu] = NULL;
+	}
+
+	// send through standard begin/end processing
+	glBegin (mode);
+
+	for (i = 0, v = first; i < count; i++, v++)
+	{
+		for (tmu = 0; tmu < XE_MAX_TMUS; tmu++)
+		{
+			if (stp[tmu])
+			{
+				xe_TextCoord[tmu].u = ((float *) stp[tmu])[0];
+				xe_TextCoord[tmu].v = ((float *) stp[tmu])[1];
+
+				stp[tmu] += texCoordPointer[tmu].stride;
+			}
+		}
+		
+		if (colorPointer.size == 4 && colorPointer.type == GL_UNSIGNED_BYTE) {
+			glColor4ubv(cp);
+		}
+		cp += colorPointer.stride;
+
+		if (vertexPointer.size == 2)
+			glVertex2fv ((float *) vp);
+		else if (vertexPointer.size == 3)
+			glVertex3fv ((float *) vp);
+
+		vp += vertexPointer.stride;
+	}
+
+	glEnd ();
+}
+
+void glEnableClientState(GLenum array)
+{
+	
+}
+
+void glDisableClientState (GLenum array)
+{
+	// switch the pointer to NULL
+	switch (array)
+	{
+	case GL_VERTEX_ARRAY:
+		vertexPointer.pointer = NULL;
+		break;
+
+	case GL_COLOR_ARRAY:
+		colorPointer.pointer = NULL;
+		break;
+
+	case GL_TEXTURE_COORD_ARRAY:
+		texCoordPointer[vArray_TMU].pointer = NULL;
+		break;
+
+	default:
+		xe_gl_error("Invalid Vertex Array Spec...!\n");
+	}
 }

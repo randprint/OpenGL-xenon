@@ -16,6 +16,8 @@ static xe_matrix_t * current_matrix = NULL;
  
 #define CURRENT_MATRIX_STACK current_matrix->stack[current_matrix->stackdepth]
  
+#define USE_RH 1
+ 
 void glMatrixMode (GLenum mode)
 {
 	switch (mode)
@@ -53,8 +55,11 @@ void glFrustum (GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GL
 	matrix4x4 tmp;
 
 	// per spec, glFrustum multiplies the current matrix by the specified orthographic projection rather than replacing it
+#if USE_RH
 	matrixPerspectiveOffCenterRH(&tmp, left, right, bottom, top, zNear, zFar);
-
+#else
+	matrixPerspectiveOffCenterLH(&tmp, left, right, bottom, top, zNear, zFar);
+#endif
 	matrixMultiply(&CURRENT_MATRIX_STACK, &tmp, &CURRENT_MATRIX_STACK);
 	current_matrix->dirty = 1;
 }
@@ -63,10 +68,12 @@ void glFrustum (GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GL
 void glOrtho (GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GLdouble zNear, GLdouble zFar)
 {
 	matrix4x4 tmp;
-
+#if USE_RH
 	// per spec, glOrtho multiplies the current matrix by the specified orthographic projection rather than replacing it
 	matrixOrthoOffCenterRH(&tmp, left, right, bottom, top, zNear, zFar);
-
+#else
+	matrixOrthoOffCenterLH(&tmp, left, right, bottom, top, zNear, zFar);
+#endif
 	matrixMultiply(&CURRENT_MATRIX_STACK, &tmp, &CURRENT_MATRIX_STACK);
 	current_matrix->dirty = 1;
 }
@@ -212,3 +219,4 @@ void XeGlCheckDirtyMatrix(xe_matrix_t *m){
 		m->dirty = 0;
 	}
 }
+

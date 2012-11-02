@@ -6,22 +6,30 @@
 
 unsigned int Gl_Color_2_Xe (GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 {
-	alpha = 255;
 	return COLOR_ARGB
 	(
-		BYTE_CLAMP (alpha * 255.0f),
-		BYTE_CLAMP (red * 255.0f),
-		BYTE_CLAMP (green * 255.0f),
-		BYTE_CLAMP (blue * 255.0f)
+		BYTE_CLAMP(alpha),
+		BYTE_CLAMP(red),
+		BYTE_CLAMP(green),
+		BYTE_CLAMP(blue)
 	);
 }
 
-void GL_SetColor (int red, int green, int blue, int alpha)
+void GL_SetColor (float red, float green, float blue, float alpha)
 {
 	// overwrite color incase verts set it
 	xe_CurrentColor.u32 = Gl_Color_2_Xe(red, green, blue, alpha);
 }
 
+/*
+void GL_SetColor (float red, float green, float blue, float alpha)
+{
+	xe_CurrentColor.a = alpha;
+	xe_CurrentColor.r = red;
+	xe_CurrentColor.g = green;
+	xe_CurrentColor.b = blue;
+}
+*/
 void glColor3f (GLfloat red, GLfloat green, GLfloat blue)
 {
 	GL_SetColor (red * 255, green * 255, blue * 255, 255);
@@ -45,12 +53,15 @@ void glColor4f (GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha)
 	GL_SetColor (red * 255, green * 255, blue * 255, alpha * 255);
 }
 
+void glColor4x (GLint red, GLint green, GLint blue, GLint alpha)
+{
+	GL_SetColor (red * 255, green * 255, blue * 255, alpha * 255);
+}
 
 void glColor4fv (const GLfloat *v)
 {
 	GL_SetColor (v[0] * 255, v[1] * 255, v[2] * 255, v[3] * 255);
 }
-
 
 void glColor4ubv (const GLubyte *v)
 {

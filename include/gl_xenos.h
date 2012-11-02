@@ -12,7 +12,7 @@
  * Vertices
  ***********************************************************************/
  
-#define XE_MAX_VERTICES	16*1024*100
+#define XE_MAX_VERTICES	8*1024*1024
  
 typedef struct {	
     float x, y, z, w;
@@ -35,9 +35,13 @@ typedef struct {
 	unsigned int u32;
 } glColor_t; 
 
-glVerticesFormat_t * xe_Vertices;
+//glVerticesFormat_t * xe_Vertices;
+float * xe_Vertices;
+int16_t * xe_indices;
 int xe_NumVerts;
 int xe_PrevNumVerts;
+int xe_NumIndices;
+int xe_PrevNumIndices;
 glColor_t xe_CurrentColor;
 glTextCoord_t xe_TextCoord[2];
 
@@ -56,6 +60,9 @@ typedef struct glXeSurface_s{
 	GLenum internalformat;
 	
 	struct XenosSurface * teximg;
+	
+	// refresh texture cache only when need
+	int dirty;
 } glXeSurface_t;
 
 glXeSurface_t * glXeSurfaces;
@@ -99,16 +106,89 @@ void XeGlInitializeMatrix(xe_matrix_t *m);
 void XeGlCheckDirtyMatrix(xe_matrix_t *m);
 
 /***********************************************************************
+ * States
+ ***********************************************************************/
+typedef struct {
+	// blending
+	int blend_enable;
+	int blend_op;
+	int blend_src;
+	int blend_dst;
+	
+	// Alpha test
+	int alpha_test_enabled;
+	int alpha_test_func;
+	float alpha_test_ref;
+	
+	// Depth
+	int z_enable;
+	int z_mask;
+	int z_func;
+	
+	// Culling
+	int cull_mode;
+	
+	// stencil
+	int stencil_enable;
+	int stencil_func_b;
+	int stencil_func;
+	int stencil_op_b;
+	int stencil_op_fail;
+	int stencil_op_zfail;
+	int stencil_op;
+	int stencil_ref_b;
+	int stencil_ref;
+	int stencil_mask_b;
+	int stencil_mask;
+	int stencil_write_b;
+	int stencil_write;
+	
+	// viewport
+	int viewport_x;
+	int viewport_y;
+	int viewport_w;
+	int viewport_h;
+	int viewport_zn;
+	int viewport_zf;
+	
+	// polygon offset
+	int polygon_offset_enabled;
+	float zoffset;
+	
+	// scissor
+	int scissor_enabled;
+	int scissor_h;
+	int scissor_w;
+	int scissor_x;
+	int scissor_y;
+	
+	
+	// other
+	int fill_mode_front;
+	int fill_mode_back;
+	
+	// Reupload all states
+	int dirty;
+	
+} xe_states_t;
+
+xe_states_t xe_state;
+void XeInitStates();
+void XeUpdateStates();
+
+/***********************************************************************
  * Global
  ***********************************************************************/
 struct XenosDevice _xe, *xe;
 struct XenosShader * pVertexShader;
 struct XenosShader * pPixelColorShader;
 struct XenosShader * pPixelModulateShader;
+struct XenosShader * pPixelModulateShader2;
 struct XenosShader * pPixelTextureShader;
 struct XenosShader * pCurrentPs;
 struct XenosShader * pCurrentTexturedPs;
 struct XenosVertexBuffer * pVbGL;
+struct XenosIndexBuffer * pIbGL;
 
 /***********************************************************************
  * Utils
@@ -117,4 +197,9 @@ void xe_gl_error(const char * format, ...);
 void xe_gl_log(const char * format, ...);
 void XenonGLInit();
 void XenonGLDisplay();
+void XenonBeginGl();
+void XenonEndGl();
 void XeGLInitTextures();
+void GL_InitShaderCache();
+void XeRefreshAllDirtyTextures();
+void XeGetScreenSize(int * width, int * height);
