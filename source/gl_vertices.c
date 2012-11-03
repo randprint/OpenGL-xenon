@@ -10,6 +10,16 @@
 #define XE_PRIMTYPE_TRIANGLESTRIP 6
 #define XE_PRIMTYPE_RECTLIST 8
 #define XE_PRIMTYPE_QUADLIST 13
+//*GL_POINTS 0x0000
+//*GL_LINES 0x0001
+//*GL_LINE_LOOP 0x0002
+//*GL_LINE_STRIP 0x0003
+//*GL_TRIANGLES 0x0004
+//*GL_TRIANGLE_STRIP 0x0005
+//*GL_TRIANGLE_FAN 0x0006
+//*GL_QUADS 0x0007
+//*GL_QUAD_STRIP 0x0008
+//*GL_POLYGON 0x0009
 */
 
 extern GLenum gl_cull_mode;
@@ -34,23 +44,17 @@ static int Gl_Prim_2_Xe_Prim(GLenum mode)
 			ret = XE_PRIMTYPE_POINTLIST;
 			break;
 		case GL_LINES:
+		case GL_LINE_LOOP:
 			ret = XE_PRIMTYPE_LINELIST;
+			break;
+		case GL_LINE_STRIP:
+			ret = XE_PRIMTYPE_LINESTRIP;
 			break;
 		case GL_QUAD_STRIP:
 		case GL_QUADS:
 			ret = XE_PRIMTYPE_QUADLIST;
 			break;
 		//default:
-//GL_POINTS 0x0000
-//GL_LINES 0x0001
-//GL_LINE_LOOP 0x0002
-//GL_LINE_STRIP 0x0003
-//GL_TRIANGLES 0x0004
-//GL_TRIANGLE_STRIP 0x0005
-//GL_TRIANGLE_FAN 0x0006
-//GL_QUADS 0x0007
-//GL_QUAD_STRIP 0x0008
-//GL_POLYGON 0x0009
 			//xe_gl_error("Unknow prim : %x\n", xe_PrimitiveMode);
 			//break;
 	}
