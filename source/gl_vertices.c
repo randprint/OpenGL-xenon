@@ -44,9 +44,9 @@ static int Gl_Prim_2_Xe_Prim(GLenum mode)
 			ret = XE_PRIMTYPE_POINTLIST;
 			break;
 		case GL_LINES:
-		case GL_LINE_LOOP:
 			ret = XE_PRIMTYPE_LINELIST;
 			break;
+		case GL_LINE_LOOP:
 		case GL_LINE_STRIP:
 			ret = XE_PRIMTYPE_LINESTRIP;
 			break;
@@ -70,19 +70,28 @@ static int Gl_Prim_2_Size(GLenum mode, int size) {
 			ret = size / 3;
 			break;
 		case GL_POLYGON:
+			ret = 1;
+			break;
 		case GL_TRIANGLE_FAN:
 		case GL_TRIANGLE_STRIP:
-			// 2 = first triangle
+			// 2 = first part
 			ret = size - 2;
 			break;
-		// don't know ...
+		case GL_LINE_LOOP: //doesnt know to connect the last line from last to first vert
+		case GL_LINE_STRIP:
+			ret = size -1;
+			break;
 		case GL_POINTS:
-		case GL_LINES:
 			ret = size;
 			break;
-		case GL_QUAD_STRIP:
+		case GL_LINES:
+			ret = size/2;
+			break;
 		case GL_QUADS:
 			ret = size/4;
+			break;
+		case GL_QUAD_STRIP:
+			ret = ((size - 2) / 2);
 			break;
 	}
 	

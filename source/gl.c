@@ -73,9 +73,7 @@ void XenonGLInit(){
 	XeGlInitializeMatrix(&projection_matrix);
 	XeGlInitializeMatrix(&modelview_matrix);
 	
-	frontbuffer = Xe_CreateTexture(xe, fb->width, fb->height, 0, XE_FMT_8888 | XE_FMT_BGRA, 1);
-	
-	Xe_SetFrameBufferSurface(xe, frontbuffer);
+	// frontbuffer = Xe_CreateTexture(xe, fb->width, fb->height, 0, XE_FMT_8888 | XE_FMT_BGRA, 1);
 	
 	// init vertices
 	xe_NumVerts = 0;
@@ -114,6 +112,10 @@ static void ShowFPS() {
 // classic way
 void XenonGLDisplay()
 {    	
+	// Reset states and matrices
+	XeGlResetDirty();
+	xe_state.dirty = 1;
+	
 	// Set stream
     Xe_SetStreamSource(xe, 0, pVbGL, 0, 10);
 	
@@ -145,8 +147,7 @@ void XenonGLDisplay()
 }
 
 void XenonBeginGl()
-{
-	
+{	
 	// Reset states
     Xe_InvalidateState(xe);
     
@@ -154,6 +155,12 @@ void XenonBeginGl()
     
     // Set stream
     Xe_SetStreamSource(xe, 0, pVbGL, 0, 10);
+    
+    // Xe_SetFrameBufferSurface(xe, frontbuffer);
+    
+    // Reset states and matrices
+    XeGlResetDirty();
+    xe_state.dirty = 1;    
 }
 
 void XenonEndGl()
