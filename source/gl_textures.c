@@ -400,9 +400,9 @@ static inline int src_format_to_bypp(GLenum format)
 	int ret = 0;
 	if (format == 1 || format == GL_LUMINANCE)
 		ret = 1;
-	else if (format == 3 || format == GL_RGB)
+	else if (format == 3 || format == GL_RGB || format == GL_RGB8)
 		ret = 3;
-	else if (format == 4 || format == GL_RGBA || format == GL_RGB8)
+	else if (format == 4 || format == GL_RGBA)
 		ret = 4;
 	else 
 		xe_gl_error ("D3D_FillTextureLevel: illegal format");
@@ -416,9 +416,9 @@ static inline int dst_format_to_bypp(GLenum format)
 	int ret = 0;
 	if (format == 1 || format == GL_LUMINANCE)
 		ret = 1;
-	else if (format == 3 || format == GL_RGB)
+	else if (format == 3 || format == GL_RGB || format == GL_RGB8)
 		ret = 4;
-	else if (format == 4 || format == GL_RGBA || format == GL_RGB8)
+	else if (format == 4 || format == GL_RGBA)
 		ret = 4;
 	else
 		xe_gl_error ("D3D_FillTextureLevel: illegal format");

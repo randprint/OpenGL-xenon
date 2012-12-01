@@ -221,7 +221,7 @@ static void GL_SubmitVertexes()
 	if (gl_cull_mode == GL_FRONT_AND_BACK)
 		return;
 	//Xe_SetFillMode(xe, XE_FILL_WIREFRAME, XE_FILL_WIREFRAME);
-		
+	
 	// update states if dirty
 	XeUpdateStates();
 
@@ -263,6 +263,7 @@ static void GL_SubmitVertexes()
 
 void glBegin(GLenum mode)
 {
+
 	xe_PrimitiveMode = mode;
 	
 	xe_PrevNumVerts = xe_NumVerts;
